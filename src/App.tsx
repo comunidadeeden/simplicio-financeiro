@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut, type User } from 'firebase/auth';
-import { LogIn, LogOut, Moon, ShieldCheck, Sun, Wallet } from 'lucide-react';
+import { LogIn, LogOut, Moon, Settings2, ShieldCheck, Sun, Wallet } from 'lucide-react';
 import { Finance } from './components/Finance';
+import { FinanceSettings } from './components/FinanceSettings';
 import { auth } from './lib/firebase';
 
 const ALLOWED_EMAIL = 'gu.correa98@gmail.com';
@@ -14,6 +15,7 @@ export default function App() {
   const [theme, setTheme] = useState<Theme>(() => window.localStorage.getItem('simplicio-financeiro-theme') === 'light' ? 'light' : 'dark');
   const [error, setError] = useState('');
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [activeView, setActiveView] = useState<'finance' | 'settings'>('finance');
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -56,9 +58,17 @@ export default function App() {
   if (state !== 'authorized') return <LoginScreen state={state} error={error} isSigningIn={isSigningIn} onLogin={login} onLoginWithRedirect={loginWithRedirect} onLogout={() => void signOut(auth)} />;
 
   return <div className={`app-shell ${theme === 'light' ? 'theme-light' : 'theme-dark'} flex h-screen overflow-hidden font-sans`}>
-    <aside className="hidden w-64 shrink-0 border-r border-slate-900/50 bg-slate-950 p-6 lg:flex lg:flex-col"><div className="flex items-center gap-3"><div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white"><Wallet size={16} /></div><div><p className="font-display text-sm font-bold text-slate-100">Simplicio.</p><p className="text-[10px] text-slate-500">Financeiro</p></div></div><div className="mt-12 rounded-xl border border-blue-500/20 bg-blue-500/[0.06] p-3"><p className="text-[10px] font-semibold uppercase tracking-widest text-blue-300">Área privada</p><p className="mt-1 text-[11px] leading-5 text-slate-400">Acesso exclusivo para administração financeira.</p></div></aside>
-    <div className="flex min-w-0 flex-1 flex-col overflow-hidden"><header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-900/50 bg-slate-950/20 px-6 backdrop-blur-sm lg:px-10"><div className="flex items-center gap-2 lg:hidden"><Wallet size={16} className="text-blue-400" /><span className="font-display text-sm font-bold text-slate-100">Financeiro</span></div><span className="hidden text-[11px] text-slate-500 lg:block">Visão de caixa, saídas e tráfego</span><div className="flex items-center gap-3"><button onClick={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')} className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-slate-100" title="Alterar tema">{theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}</button><div className="hidden text-right sm:block"><p className="text-[11px] font-semibold text-slate-200">{user?.displayName || 'Gustavo Correa'}</p><p className="text-[10px] text-slate-600">Administrador</p></div><button onClick={() => void signOut(auth)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-800 text-slate-500 hover:text-slate-100" title="Sair"><LogOut size={15} /></button></div></header><main className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar"><Finance /></main></div>
+    <aside className="hidden w-64 shrink-0 border-r border-slate-900/50 bg-slate-950 p-4 lg:flex lg:flex-col">
+      <div className="flex items-center gap-3 px-2 py-3"><div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white"><Wallet size={16} /></div><div><p className="font-display text-sm font-bold text-slate-100">Simplicio.</p><p className="text-[10px] text-slate-500">Financeiro</p></div></div>
+      <nav className="mt-8 space-y-1"><NavButton active={activeView === 'finance'} onClick={() => setActiveView('finance')} icon={<Wallet size={16} />} label="Financeiro" /><NavButton active={activeView === 'settings'} onClick={() => setActiveView('settings')} icon={<Settings2 size={16} />} label="Configurações" /></nav>
+      <div className="mt-auto rounded-xl border border-blue-500/20 bg-blue-500/[0.06] p-3"><p className="text-[10px] font-semibold uppercase tracking-widest text-blue-300">Área privada</p><p className="mt-1 text-[11px] leading-5 text-slate-400">Planilhas e lançamentos exclusivos deste Financeiro.</p></div>
+    </aside>
+    <div className="flex min-w-0 flex-1 flex-col overflow-hidden"><header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-900/50 bg-slate-950/20 px-6 backdrop-blur-sm lg:px-10"><div className="flex items-center gap-2 lg:hidden"><Wallet size={16} className="text-blue-400" /><span className="font-display text-sm font-bold text-slate-100">Financeiro</span></div><span className="hidden text-[11px] text-slate-500 lg:block">{activeView === 'finance' ? 'Visão de caixa, saídas e tráfego' : 'Conexões exclusivas das planilhas financeiras'}</span><div className="flex items-center gap-3"><button onClick={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')} className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-slate-100" title="Alterar tema">{theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}</button><div className="hidden text-right sm:block"><p className="text-[11px] font-semibold text-slate-200">{user?.displayName || 'Gustavo Correa'}</p><p className="text-[10px] text-slate-600">Administrador</p></div><button onClick={() => void signOut(auth)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-800 text-slate-500 hover:text-slate-100" title="Sair"><LogOut size={15} /></button></div></header><main className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">{activeView === 'finance' ? <Finance /> : <FinanceSettings />}</main></div>
   </div>;
+}
+
+function NavButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: ReactNode; label: string }) {
+  return <button onClick={onClick} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[12px] font-semibold transition-colors ${active ? 'bg-blue-500/10 text-blue-300' : 'text-slate-500 hover:bg-slate-900/40 hover:text-slate-200'}`}>{icon}{label}</button>;
 }
 
 function LoginScreen({ state, error, isSigningIn, onLogin, onLoginWithRedirect, onLogout }: { state: AccessState; error: string; isSigningIn: boolean; onLogin: () => void; onLoginWithRedirect: () => void; onLogout: () => void }) {

@@ -108,5 +108,9 @@ service cloud.firestore {
       allow read: if canAccessApp();
       allow write: if isAdmin();
     }
+
+    match /financeIntegrationSettings/{settingId} {
+      allow read, write: if isAdminEmail();
+    }
   }
 }

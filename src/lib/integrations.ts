@@ -156,7 +156,7 @@ export const defaultIntegrationSettings: IntegrationSettings = {
   },
 };
 
-const settingsRef = doc(collection(db, 'integrationSettings'), 'main');
+const settingsRef = doc(collection(db, 'financeIntegrationSettings'), 'main');
 
 export function subscribeIntegrationSettings(
   onChange: (settings: IntegrationSettings) => void,
