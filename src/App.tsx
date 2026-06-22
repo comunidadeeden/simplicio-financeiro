@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
+import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut, type User } from 'firebase/auth';
 import { LogIn, LogOut, Moon, ShieldCheck, Sun, Wallet } from 'lucide-react';
 import { Finance } from './components/Finance';
 import { auth } from './lib/firebase';
@@ -13,6 +13,7 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [theme, setTheme] = useState<Theme>(() => window.localStorage.getItem('simplicio-financeiro-theme') === 'light' ? 'light' : 'dark');
   const [error, setError] = useState('');
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -27,16 +28,32 @@ export default function App() {
 
   const login = async () => {
     setError('');
+    setIsSigningIn(true);
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       await signInWithPopup(auth, provider);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : 'Não foi possível entrar com Google.');
+      setError(getLoginMessage(nextError));
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
-  if (state !== 'authorized') return <LoginScreen state={state} error={error} onLogin={login} onLogout={() => void signOut(auth)} />;
+  const loginWithRedirect = async () => {
+    setError('');
+    setIsSigningIn(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      await signInWithRedirect(auth, provider);
+    } catch (nextError) {
+      setError(getLoginMessage(nextError));
+      setIsSigningIn(false);
+    }
+  };
+
+  if (state !== 'authorized') return <LoginScreen state={state} error={error} isSigningIn={isSigningIn} onLogin={login} onLoginWithRedirect={loginWithRedirect} onLogout={() => void signOut(auth)} />;
 
   return <div className={`app-shell ${theme === 'light' ? 'theme-light' : 'theme-dark'} flex h-screen overflow-hidden font-sans`}>
     <aside className="hidden w-64 shrink-0 border-r border-slate-900/50 bg-slate-950 p-6 lg:flex lg:flex-col"><div className="flex items-center gap-3"><div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white"><Wallet size={16} /></div><div><p className="font-display text-sm font-bold text-slate-100">Simplicio.</p><p className="text-[10px] text-slate-500">Financeiro</p></div></div><div className="mt-12 rounded-xl border border-blue-500/20 bg-blue-500/[0.06] p-3"><p className="text-[10px] font-semibold uppercase tracking-widest text-blue-300">Área privada</p><p className="mt-1 text-[11px] leading-5 text-slate-400">Acesso exclusivo para administração financeira.</p></div></aside>
@@ -44,7 +61,15 @@ export default function App() {
   </div>;
 }
 
-function LoginScreen({ state, error, onLogin, onLogout }: { state: AccessState; error: string; onLogin: () => void; onLogout: () => void }) {
+function LoginScreen({ state, error, isSigningIn, onLogin, onLoginWithRedirect, onLogout }: { state: AccessState; error: string; isSigningIn: boolean; onLogin: () => void; onLoginWithRedirect: () => void; onLogout: () => void }) {
   const denied = state === 'denied';
-  return <div className="flex min-h-screen items-center justify-center bg-slate-950 p-6 text-slate-200"><section className="w-full max-w-md rounded-2xl border border-slate-900 bg-slate-950 p-7 shadow-2xl"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-500/10 text-blue-300"><ShieldCheck size={18} /></div><div><h1 className="font-display text-lg font-bold text-slate-100">Simplicio Financeiro</h1><p className="text-[12px] text-slate-500">Ambiente administrativo privado.</p></div></div>{denied ? <div className="mt-6 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-[12px] leading-5 text-amber-200">Este e-mail não tem acesso a esta aplicação.</div> : <p className="mt-6 text-[12px] leading-5 text-slate-500">Entre com a conta administrativa autorizada para consultar o financeiro.</p>}{error && <div className="mt-4 rounded-lg border border-rose-500/20 bg-rose-500/10 p-3 text-[11px] text-rose-200">{error}</div>}{denied ? <button onClick={onLogout} className="mt-6 h-10 w-full rounded-lg border border-slate-800 text-[12px] font-semibold text-slate-300">Trocar conta</button> : <button onClick={onLogin} disabled={state === 'loading'} className="mt-6 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 text-[12px] font-bold text-white hover:bg-blue-500 disabled:opacity-60"><LogIn size={14} />{state === 'loading' ? 'Verificando acesso...' : 'Entrar com Google'}</button>}</section></div>;
+  return <div className="flex min-h-screen items-center justify-center bg-slate-950 p-6 text-slate-200"><section className="w-full max-w-md rounded-2xl border border-slate-900 bg-slate-950 p-7 shadow-2xl"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-500/10 text-blue-300"><ShieldCheck size={18} /></div><div><h1 className="font-display text-lg font-bold text-slate-100">Simplicio Financeiro</h1><p className="text-[12px] text-slate-500">Ambiente administrativo privado.</p></div></div>{denied ? <div className="mt-6 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-[12px] leading-5 text-amber-200">Este e-mail não tem acesso a esta aplicação.</div> : <p className="mt-6 text-[12px] leading-5 text-slate-500">Entre com a conta administrativa autorizada para consultar o financeiro.</p>}{error && <div className="mt-4 rounded-lg border border-rose-500/20 bg-rose-500/10 p-3 text-[11px] text-rose-200">{error}</div>}{denied ? <button onClick={onLogout} className="mt-6 h-10 w-full rounded-lg border border-slate-800 text-[12px] font-semibold text-slate-300">Trocar conta</button> : <><button onClick={onLogin} disabled={state === 'loading' || isSigningIn} className="mt-6 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 text-[12px] font-bold text-white hover:bg-blue-500 disabled:opacity-60"><LogIn size={14} />{isSigningIn ? 'Abrindo Google...' : state === 'loading' ? 'Verificando acesso...' : 'Entrar com Google'}</button><button onClick={onLoginWithRedirect} disabled={state === 'loading' || isSigningIn} className="mt-2 h-9 w-full rounded-lg border border-slate-800 text-[11px] font-semibold text-slate-400 hover:text-slate-100 disabled:opacity-60">Entrar redirecionando</button></>}</section></div>;
+}
+
+function getLoginMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes('auth/unauthorized-domain')) return 'Este domínio ainda não foi autorizado no Firebase Authentication. Adicione simplicio-financeiro-ten.vercel.app em Authorized domains.';
+  if (message.includes('auth/popup-closed-by-user') || message.includes('auth/popup-blocked')) return 'O popup do Google foi bloqueado ou fechado. Use “Entrar redirecionando”.';
+  if (message.includes('auth/operation-not-allowed')) return 'O login com Google não está ativo no Firebase Authentication.';
+  return `Não foi possível iniciar o login: ${message}`;
 }
