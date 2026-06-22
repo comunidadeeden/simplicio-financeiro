@@ -1,116 +1,17 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isSignedIn() {
-      return request.auth != null && request.auth.token.email is string;
+    function isFinanceOwner() {
+      return request.auth != null
+        && request.auth.token.email == 'gu.correa98@gmail.com';
     }
 
-    function email() {
-      return request.auth.token.email.lower();
-    }
-
-    function isAdminEmail() {
-      return isSignedIn() && email() == 'gu.correa98@gmail.com';
-    }
-
-    function userDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
-    function isAdmin() {
-      return isAdminEmail() || (isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && userDoc().role == 'admin');
-    }
-
-    function allowedUserDoc() {
-      return get(/databases/$(database)/documents/allowedUsers/$(email())).data;
-    }
-
-    function isAllowedCollaborator() {
-      return isSignedIn() && exists(/databases/$(database)/documents/allowedUsers/$(email())) && allowedUserDoc().active == true;
-    }
-
-    function hasPermission(page) {
-      return isAdmin() || (isAllowedCollaborator() && page in allowedUserDoc().permissions);
-    }
-
-    function canAccessApp() {
-      return isAdmin() || isAllowedCollaborator();
-    }
-
-    function isOwnVisibleActivity(data) {
-      return canAccessApp() && data.ownerEmail == email();
-    }
-
-    function isOwnRoutine(data) {
-      return canAccessApp() && data.ownerEmail == email();
-    }
-
-    match /users/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow create, update: if isSignedIn()
-        && request.auth.uid == userId
-        && request.resource.data.email == email()
-        && request.resource.data.active == true
-        && (
-          (isAdminEmail() && request.resource.data.role == 'admin') ||
-          (isAllowedCollaborator() && request.resource.data.role == 'collaborator')
-        );
-      allow delete: if isAdmin();
-    }
-
-    match /allowedUsers/{userEmail} {
-      allow read: if isAdmin() || (isSignedIn() && userEmail == email());
-      allow create, update, delete: if isAdmin();
-    }
-
-    match /activities/{activityId} {
-      allow read: if isAdmin() || isOwnVisibleActivity(resource.data);
-      allow create: if isAdmin() || isOwnVisibleActivity(request.resource.data);
-      allow update: if isAdmin() || (isOwnVisibleActivity(resource.data) && isOwnVisibleActivity(request.resource.data));
-      allow delete: if isAdmin() || isOwnVisibleActivity(resource.data);
-    }
-
-    match /activityRoutines/{routineId} {
-      allow read: if isAdmin() || isOwnRoutine(resource.data);
-      allow create: if isAdmin() || isOwnRoutine(request.resource.data);
-      allow update: if isAdmin() || (isOwnRoutine(resource.data) && isOwnRoutine(request.resource.data));
-      allow delete: if isAdmin() || isOwnRoutine(resource.data);
-    }
-
-    match /teamMembers/{memberId} {
-      allow read: if canAccessApp();
-      allow write: if isAdmin();
-    }
-
-
-    match /splitTests/{testId} {
-      allow get, list: if resource.data.status == 'Ativo' || hasPermission('split-tests');
-      allow create, update, delete: if isAdmin();
-    }
-
-    match /splitTestClicks/{clickId} {
-      allow create: if true;
-      allow read: if hasPermission('split-tests');
-      allow update, delete: if isAdmin();
-    }
-
-    match /adCreativeAssets/{assetId} {
-      allow read: if hasPermission('ads');
-      allow write: if isAdmin();
-    }
-
-    match /financeExpenses/{expenseId} {
-      allow read: if hasPermission('finance');
-      allow write: if isAdmin();
-    }
-
-    match /integrationSettings/{settingId} {
-      allow read: if canAccessApp();
-      allow write: if isAdmin();
+    match /financePrivateExpenses/{expenseId} {
+      allow read, write: if isFinanceOwner();
     }
 
     match /financeIntegrationSettings/{settingId} {
-      allow read, write: if isAdminEmail();
+      allow read, write: if isFinanceOwner();
     }
   }
 }
